@@ -1,0 +1,99 @@
+//
+// Created by lucian on 03.03.19.
+//
+
+#ifndef COMPILERS_TOKENS_H
+#define COMPILERS_TOKENS_H
+
+#define AUTO 1
+#define BOOL 2
+#define BREAK 3
+#define CASE 4
+#define CHAR 5
+#define COMPLEX 6
+#define CONST 7
+#define CONTINUE 8
+#define DEFAULT 9
+#define DO 10
+#define DOUBLE 11
+#define ELSE 12
+#define ENUM 13
+#define EXTERN 14
+#define FLOAT 15
+#define FOR 16
+#define GOTO 17
+#define IMAGINARY 18
+#define IF 19
+#define INT 20
+#define INLINE 21
+#define LONG 22
+#define REGISTER 23
+#define RETURN 24
+#define RESTRICT 25
+#define SHORT 26
+#define SIGNED 27
+#define SIZEOF 28
+#define STATIC 29
+#define STRUCT 30
+#define SWITCH 31
+#define TYPEDEF 32
+#define UNION 33
+#define UNSIGNED 34
+#define VOID 35
+#define VOLATILE 36
+#define WHILE 37
+#define IDENTIFIER 38
+#define CONSTANT 39
+#define STRING_LITERAL 40
+#define ELLIPSIS 41
+#define RIGHT_ASSIGN 42
+#define LEFT_ASSIGN 43
+#define ADD_ASSIGN 44
+#define SUB_ASSIGN 45
+#define MUL_ASSIGN 46
+#define DIV_ASSIGN 47
+#define MOD_ASSIGN 48
+#define AND_ASSIGN 49
+#define XOR_ASSIGN 50
+#define OR_ASSIGN 51
+#define RIGHT_OP 52
+#define LEFT_OP 53
+#define INC_OP 54
+#define DEC_OP 55
+#define PTR_OP 56
+#define AND_OP 57
+#define OR_OP 58
+#define LE_OP 59
+#define GE_OP 60
+#define EQ_OP 61
+#define NE_OP 62
+#define SEMICOLON 63
+#define CURLY_LEFT 64
+#define CURLY_RIGHT 65
+#define COMMA 66
+#define COLON 67
+#define EQUALS 68
+#define ROUND_LEFT 69
+#define ROUND_RIGHT 70
+#define SQUARE_LEFT 71
+#define SQUARE_RIGHT 72
+#define DOT 73
+#define AND 74
+#define EXCLAMATION 75
+#define MINUS 77
+#define TILDE 76
+#define PLUS 78
+#define STAR 79
+#define PERCENT 80
+#define ARROW_LEFT 81
+#define ARROW_RIGHT 82
+#define ARROW_UP 83
+#define PIPE 84
+#define QUESTION 85
+#define CHAR_LITERAL 86
+#define SLASH 87
+#define END_OF_FILE 0
+#define BAD_CHARACTER 88
+#define INCLUDE 89
+
+#endif //COMPILERS_TOKENS_H
