@@ -27,9 +27,10 @@ class DFA (
     }
 
     fun consume(input: Input) : Option<State> {
-        when (state) {
+        val currentState = state
+        when (currentState) {
             is Option.Just<State> -> {
-                val key = TransitionKey((state as Option.Just<State>).value, input)
+                val key = TransitionKey(currentState.value, input)
                 state = delta.getOrDefault(key, Option.None)
             }
         }
@@ -37,8 +38,9 @@ class DFA (
     }
 
     fun accepts() : Boolean {
-        return when (state) {
-            is Option.Just<State> -> finals.contains((state as Option.Just<State>).value)
+        val currentState = state
+        return when (currentState) {
+            is Option.Just<State> -> finals.contains(currentState.value)
             is Option.None -> false
         }
     }
