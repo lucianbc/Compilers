@@ -75,6 +75,11 @@ enum class States (val final: Boolean = true) {
     WORD_FO(false),
     WORD_FOR,
 
+    WORD_FL(false),
+    WORD_FLO(false),
+    WORD_FLOA(false),
+    WORD_FLOAT,
+
     IDENTIFIER,
 
     STRING_CONTENT(false),
@@ -95,6 +100,10 @@ enum class States (val final: Boolean = true) {
     OCT_CONSTANT,
     INT_CONSTANT
 }
+
+val IGNORED_STATES = setOf(
+    WHITESPACE, LINE_COMMENT_END, LINE_COMMENT, C_COMMENT
+)
 
 fun operators() : TransitionTable {
     return mapOf(
@@ -166,7 +175,7 @@ fun keywords() : TransitionTable {
         transition(START,'e', WORD_E),
         transition(WORD_E,'l', WORD_EL),
         transition(WORD_EL,'s', WORD_ELS),
-        transition(WORD_ELS,'e', WORD_ELSE    ),
+        transition(WORD_ELS,'e', WORD_ELSE),
 
         transition(START,'w', WORD_W),
         transition(WORD_W,'h', WORD_WH),
@@ -176,7 +185,13 @@ fun keywords() : TransitionTable {
 
         transition(START,'f', WORD_F),
         transition(WORD_F,'o', WORD_FO),
-        transition(WORD_FO,'r', WORD_FOR)
+        transition(WORD_FO,'r', WORD_FOR),
+
+        transition(WORD_F, 'l', WORD_FL),
+        transition(WORD_FL, 'o', WORD_FLO),
+        transition(WORD_FLO, 'a', WORD_FLOA),
+        transition(WORD_FLOA, 't', WORD_FLOAT)
+
     )
 }
 
@@ -311,8 +326,24 @@ fun testOperators () {
     lexer.tokenize()
 }
 
-//https://rosettacode.org/wiki/Compiler/lexical_analyzer
+fun tokenize(input: InputStream): Sequence<Either<Position, Lexeme>> {
+    val lexDfa = makeDFA()
+    val lexer = Lexer(lexDfa, input)
+    return lexer.tokenize().filter(::shouldSkip)
+}
 
+fun shouldSkip(t: Either<Position, Lexeme>): Boolean {
+    when (t) {
+        is Either.Right<Lexeme> -> return toState(t.value.type) !in IGNORED_STATES
+    }
+    return true
+}
+
+fun toState(s: State): States {
+    return States.values()[s.value]
+}
+
+//https://rosettacode.org/wiki/Compiler/lexical_analyzer
 fun main() {
 //    testOperators()
 //    testKeywordsAndIdentifiers()
@@ -341,11 +372,22 @@ fun transition(start: States, input: Char, end: States) : Pair<TransitionKey, St
     return Pair(TransitionKey(state(start), Input(input)), state(end))
 }
 
-fun printState(state: Option<State>) {
+fun printState(state: Either<Position, Lexeme>) {
     when (state) {
-        is Option.Just<State> -> println(States.values()[state.value.value])
-        is Option.None -> println("Eroare")
+        is Either.Right<Lexeme> -> printLexeme(state.value)
+        is Either.Left<Position> -> printError(state.value)
     }
+}
+
+fun printLexeme(l: Lexeme) {
+    println(States.values()[l.type.value].toString() + ": "
+            + l.position.line + ", "
+            + l.position.col + ", value: "
+            + l.value )
+}
+
+fun printError(p: Position) {
+    println("Eroare la pozitia l=" + p.line + ", c=" + p.col)
 }
 
 fun makeDFA() : DFA {

@@ -5,11 +5,6 @@ typealias TransitionKey = Pair<State, Input>
 typealias TransitionTable = Map<TransitionKey, State>
 typealias DeltaFun = Map<TransitionKey, Option<State>>
 
-sealed class Option<out A> {
-    object None : Option<Nothing>()
-    data class Just<out A> (val value : A) : Option<A>()
-}
-
 class DFA (
     transitions: TransitionTable,
     private val initial : State,

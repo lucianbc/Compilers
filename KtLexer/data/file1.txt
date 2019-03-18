@@ -1,7 +1,11 @@
 int float stupus
-/* comentariu */
+/* comentariu
+
+ */
 // comentariu pe linie
 12
 //com
-a->b
-c->d
+"string aici"
+"string pe
+doua lini"
+"
