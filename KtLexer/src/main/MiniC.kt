@@ -92,14 +92,18 @@ enum class States (val final: Boolean = true) {
     C_COMMENT_EXIT_1(false),
     C_COMMENT,
 
-    HEX_OCT(false),
-    HEX_START(false),
-    HEX_1(false),
-    HEX_CONSTANT,
-    OCT_1(false),
-    OCT_CONSTANT,
-    INT_CONSTANT
+    ZERO_FIRST(false),
+    X_AFTER_ZERO(false),
+    HEX_DIGIT,
+    INT_DIGIT,
+    DIGIT_AFTER_ZERO(false),
+    POINT(false),
+    DIGIT_AFTER_POINT,
+    E_SEPARATOR(false),
+    PLUS_MINUS_AFTER_E(false),
+    DIGIT_AFTER_E
 }
+
 
 val IGNORED_STATES = setOf(
     WHITESPACE, LINE_COMMENT_END, LINE_COMMENT, C_COMMENT
@@ -271,27 +275,36 @@ fun comments() : TransitionTable {
     return cComment + lineComment
 }
 
-fun intConstants() : TransitionTable {
+fun numberConstants() : TransitionTable {
     val digits = "0123456789"
     val nz = "123456789"
     val hex = "0123456789abcdef"
-    val oct = "01234567"
 
     return mapOf(
-        transition(START, '0', HEX_OCT),
-        transition(HEX_OCT, 'x', HEX_START),
-        transition(HEX_OCT, 'X', HEX_START)
-    ) + hex.flatMap { h -> listOf(
-        transition(HEX_START, h, HEX_CONSTANT),
-        transition(HEX_CONSTANT, h, HEX_CONSTANT)
-    ) } + oct.flatMap { o -> listOf(
-        transition(HEX_OCT, o, OCT_CONSTANT),
-        transition(OCT_CONSTANT, o, OCT_CONSTANT)
-    ) } + nz.map { d ->
-        transition(START, d, INT_CONSTANT)
-    } + digits.map { d ->
-        transition(INT_CONSTANT, d, INT_CONSTANT)
-    }
+        transition(START, '0', ZERO_FIRST),
+        transition(ZERO_FIRST, 'x', X_AFTER_ZERO),
+        transition(DIGIT_AFTER_ZERO, '.', POINT),
+        transition(DIGIT_AFTER_POINT, 'e', E_SEPARATOR),
+        transition(DIGIT_AFTER_POINT, 'E', E_SEPARATOR),
+        transition(INT_DIGIT, 'e', E_SEPARATOR),
+        transition(INT_DIGIT, 'E', E_SEPARATOR),
+        transition(E_SEPARATOR, '+', PLUS_MINUS_AFTER_E),
+        transition(E_SEPARATOR, '-', PLUS_MINUS_AFTER_E)
+    ) + nz.map { d ->
+        transition(START, d, INT_DIGIT)
+    } + digits.flatMap { d -> listOf(
+        transition(INT_DIGIT, d, INT_DIGIT),
+        transition(ZERO_FIRST, d, DIGIT_AFTER_ZERO),
+        transition(DIGIT_AFTER_ZERO, d, DIGIT_AFTER_ZERO),
+        transition(POINT, d, DIGIT_AFTER_POINT),
+        transition(DOT, d, DIGIT_AFTER_POINT),
+        transition(E_SEPARATOR, d, DIGIT_AFTER_E),
+        transition(PLUS_MINUS_AFTER_E, d, DIGIT_AFTER_E),
+        transition(DIGIT_AFTER_E, d, DIGIT_AFTER_E)
+    ) } + hex.flatMap { h -> listOf(
+        transition(X_AFTER_ZERO, h, HEX_DIGIT),
+        transition(HEX_DIGIT, h, HEX_DIGIT)
+    ) }
 }
 
 fun testStrings() {
@@ -380,7 +393,7 @@ fun printState(state: Either<Position, Lexeme>) {
 }
 
 fun printLexeme(l: Lexeme) {
-    println(States.values()[l.type.value].toString() + ": "
+    println(States.values()[l.type.value].name() + ": "
             + l.position.line + ", "
             + l.position.col + ", value: "
             + l.value )
@@ -398,6 +411,18 @@ fun makeDFA() : DFA {
             identifiersAndKeywords() +
             strings() +
             comments() +
-            intConstants()
+            numberConstants()
     return makeDFA(transitions)
+}
+
+// States renaming
+val renaming = mapOf(
+    HEX_DIGIT to "CONSTANT",
+    INT_DIGIT to "CONSTANT",
+    DIGIT_AFTER_POINT to "CONSTANT",
+    DIGIT_AFTER_E to "CONSTANT"
+)
+
+fun States.name() : String {
+    return renaming.getOrDefault(this, this.name)
 }
