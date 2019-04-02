@@ -8,10 +8,11 @@ void produceOutput(Scanner & scanner, ostream &out);
 string getFileName(int argc, char* argv[]);
 string getFileName();
 
+
 int main(int argc, char* argv[]) {
 
-//    string fileName = getFileName(argc, argv);
-    string fileName = getFileName();
+    string fileName = getFileName(argc, argv);
+//    string fileName = getFileName();
 
     ifstream in(fileName);
 
@@ -51,7 +52,7 @@ string getFileName(int argc, char* argv[]) {
 }
 
 string getFileName() {
-    return "./test/p1.c";
+    return "./test/aici.txt";
 //    return "./test/mytest.txt";
 }
 

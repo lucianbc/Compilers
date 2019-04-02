@@ -80,7 +80,7 @@ FS              (f|F|l|L)
 0[xX]{HEX}*"."{HEX}+{P}{FS}?    { count(yytext); return(CONSTANT); }
 0[xX]{HEX}+"."{HEX}*{P}{FS}?    { count(yytext); return(CONSTANT); }
 
-\"(\\.|[^"\\])*\"               { count(yytext); return(STRING_LITERAL); }
+\"(\\(.|\r?\n)|[^\\"\n])*\"               { count(yytext); return(STRING_LITERAL); }
 \'(.|[\t\v\n\f]|\\t|\\v|\\n|\\f)\'  { count(yytext); return(CHAR_LITERAL); }
 
 "..."           { count(yytext); return(ELLIPSIS); }
