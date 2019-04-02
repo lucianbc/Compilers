@@ -1,4 +1,5 @@
 import java.util.*
+import kotlin.collections.HashMap
 
 typealias InputStream = ListIterator<Input>
 
@@ -15,7 +16,17 @@ private fun Position.nextLine() : Position {
     return Position(line + 1, START_COL)
 }
 
-data class Lexeme(val type: State, val value: String, val position: Position)
+data class Token(val type: State, val value: Int, val position: Position, private val lexer: Lexer) {
+    override fun toString(): String {
+        return StringBuilder()
+            .append(States.values()[this.type.value].name())
+            .append(": ")
+            .append(this.lexer.valueOf(this))
+            .append(" ")
+            .append(this.position)
+            .toString()
+    }
+}
 
 class Lexer (
     private val dfa: DFA,
@@ -31,11 +42,13 @@ class Lexer (
 
     private val buffer = Stack<Input>()
 
-    fun tokenize(): Sequence<Either<Position, Lexeme>> = sequence {
+    private val stringTable = HashMap<Int, String>()
+
+    fun tokenize(): Sequence<Either<Position, Token>> = sequence {
         while (inputStream.hasNext()) {
             val newState = advance()
             when (newState) {
-                is Option.None -> yield(rollback())
+                is Option.None -> { yield(rollback()) }
                 is Option.Just<State> -> {
                     if (dfa.accepts()) {
                         saveState(newState.value)
@@ -44,6 +57,17 @@ class Lexer (
             }
         }
         yield(rollback())
+    }.filter { t -> shouldSkip(t) }
+
+    private fun shouldSkip(t: Either<Position, Token>): Boolean {
+        when (t) {
+            is Either.Right<Token> -> return toState(t.value.type) !in IGNORED_STATES
+        }
+        return true
+    }
+
+    private fun toState(s: State): States {
+        return States.values()[s.value]
     }
 
     private fun advance() : Option<State> {
@@ -64,7 +88,7 @@ class Lexer (
         extractedChars = 0
     }
 
-    private fun rollback(): Either<Position, Lexeme> {
+    private fun rollback(): Either<Position, Token> {
         putInputsBack()
         val finalState = lastFinal
         cursor = lastFinalEnd
@@ -81,16 +105,34 @@ class Lexer (
         }
     }
 
-    private fun emmitToken(finalState: Option<State>): Either<Position, Lexeme> {
+    private fun emmitToken(finalState: Option<State>): Either<Position, Token> {
         val lexemePosition = lastFinalStart
         lastFinalStart = cursor
 
         return when (finalState) {
             is Option.None -> Either.Left(lexemePosition)
             is Option.Just<State> -> {
-                Either.Right(Lexeme(finalState.value, buildToken(), lexemePosition))
+                Either.Right(buildLexeme(finalState.value, lexemePosition))
             }
         }
+    }
+
+    public fun valueOf(l: Token): String {
+        return stringTable[l.value]!!
+    }
+
+    private fun buildLexeme(state: State, pos: Position): Token {
+        val token = buildToken()
+
+        for (e in stringTable.entries){
+            if (e.value == token) {
+                return Token(state, e.key, pos, this)
+            }
+        }
+
+        val newKey = stringTable.size
+        stringTable[newKey] = token
+        return Token(state, newKey, pos, this)
     }
 
     private fun buildToken(): String {
@@ -100,22 +142,4 @@ class Lexer (
         }
         return builder.reversed().toString()
     }
-}
-
-
-fun main() {
-    //    accepted language: 'a', 'cd'
-    val transitions = mapOf(
-        TransitionKey(State(0), Input('a')) to State(1),
-        TransitionKey(State(0), Input('b')) to State(2),
-        TransitionKey(State(0), Input('c')) to State(3),
-        TransitionKey(State(3), Input('d')) to State(4)
-    )
-
-    val validator = DFA(transitions, State(0), setOf(State(1), State(4)))
-
-    val input : InputStream = listOf('a', 'c', 'd', 'a').map { x -> Input(x) }.listIterator()
-
-    val lexer = Lexer(validator, input)
-    lexer.tokenize().forEach(::println)
 }

@@ -12,11 +12,15 @@ fun mappingFun(x: Char): Input {
 fun main(args: Array<String>) {
     val input = readFile("./data/file1.txt")
 //    val input = readFile(args[0])
-    val tokenSequence = tokenize(input)
+
+    val lexDfa = makeDFA()
+    val lexer = Lexer(lexDfa, input)
+
+    val tokenSequence = lexer.tokenize()
 
     loop@ for (t in tokenSequence) {
         when (t) {
-            is Either.Right<Lexeme> -> printLexeme(t.value)
+            is Either.Right<Token> -> println(t.value)
             is Either.Left<Position> -> {
                 printError(t.value)
                 break@loop

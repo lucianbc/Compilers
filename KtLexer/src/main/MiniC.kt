@@ -23,6 +23,10 @@ enum class States (val final: Boolean = true) {
     OP_DECREMENT_ASSIGN,
     OP_BIT_AND,
     OP_BIT_OR,
+    OP_SHIFT_LEFT,
+    OP_SHIFT_RIGHT,
+    OP_SHIFT_ASSIGN_LEFT,
+    OP_SHIFT_ASSIGN_RIGHT,
 
     LEFT_PAREN,
     RIGHT_PAREN,
@@ -36,58 +40,62 @@ enum class States (val final: Boolean = true) {
 
     WHITESPACE,
 
-    WORD_I(false),
+    WORD_I,
     WORD_IF,
-    WORD_IN(false),
+    WORD_IN,
     WORD_INT,
 
-    WORD_R(false),
-    WORD_RE(false),
-    WORD_RET(false),
-    WORD_RETU(false),
-    WORD_RETUR(false),
+    WORD_R,
+    WORD_RE,
+    WORD_RET,
+    WORD_RETU,
+    WORD_RETUR,
     WORD_RETURN,
 
-    WORD_C(false),
-    WORD_CH(false),
-    WORD_CHA(false),
+    WORD_C,
+    WORD_CH,
+    WORD_CHA,
     WORD_CHAR,
 
-    WORD_D(false),
-    WORD_DO(false),
-    WORD_DOU(false),
-    WORD_DOUB(false),
-    WORD_DOUBL(false),
+    WORD_D,
+    WORD_DO,
+    WORD_DOU,
+    WORD_DOUB,
+    WORD_DOUBL,
     WORD_DOUBLE,
 
-    WORD_E(false),
-    WORD_EL(false),
-    WORD_ELS(false),
+    WORD_E,
+    WORD_EL,
+    WORD_ELS,
     WORD_ELSE,
 
-    WORD_W(false),
-    WORD_WH(false),
-    WORD_WHI(false),
-    WORD_WHIL(false),
+    WORD_W,
+    WORD_WH,
+    WORD_WHI,
+    WORD_WHIL,
     WORD_WHILE,
 
-    WORD_F(false),
-    WORD_FO(false),
+    WORD_F,
+    WORD_FO,
     WORD_FOR,
 
-    WORD_FL(false),
-    WORD_FLO(false),
-    WORD_FLOA(false),
+    WORD_FL,
+    WORD_FLO,
+    WORD_FLOA,
     WORD_FLOAT,
 
     IDENTIFIER,
-
 
     STRING_QUOTE(false),
     STRING_ESCAPE(false),
     STRING_ESCAPE_CARRIAGE(false),
     STRING_CONTENT(false),
     STRING,
+
+    CHAR_START(false),
+    CHAR_ESCAPE(false),
+    CHAR_CONTENT(false),
+    CHAR,
 
     LINE_COMMENT,
     LINE_COMMENT_END,
@@ -96,7 +104,7 @@ enum class States (val final: Boolean = true) {
     C_COMMENT_EXIT_1(false),
     C_COMMENT,
 
-    ZERO_FIRST(false),
+    ZERO_FIRST,
     X_AFTER_ZERO(false),
     HEX_DIGIT,
     INT_DIGIT,
@@ -107,7 +115,6 @@ enum class States (val final: Boolean = true) {
     PLUS_MINUS_AFTER_E(false),
     DIGIT_AFTER_E
 }
-
 
 val IGNORED_STATES = setOf(
     WHITESPACE, LINE_COMMENT_END, LINE_COMMENT, C_COMMENT
@@ -127,7 +134,11 @@ fun operators() : TransitionTable {
         transition(START, '&', OP_BIT_AND),
         transition(START, '|', OP_BIT_OR),
         transition(OP_LESS, '=', OP_LESS_EQUAL),
+        transition(OP_LESS, '<', OP_SHIFT_LEFT),
+        transition(OP_SHIFT_LEFT, '=', OP_SHIFT_ASSIGN_LEFT),
         transition(OP_GREATER, '=', OP_GREATER_EQUAL),
+        transition(OP_GREATER, '>', OP_SHIFT_RIGHT),
+        transition(OP_SHIFT_RIGHT, '=', OP_SHIFT_ASSIGN_RIGHT),
         transition(OP_ASSIGN, '=', OP_EQUAL),
         transition(OP_NOT, '=', OP_NOT_EQUAL),
         transition(OP_BIT_AND, '&', OP_AND),
@@ -274,6 +285,17 @@ fun strings() : TransitionTable {
     ) + fromEscapeToContent
 }
 
+fun chars() : TransitionTable {
+    val allButEscape = (1..127).toList() - listOf('\\'.toInt())
+    return mapOf(
+        transition(START, '\'', CHAR_START),
+        transition(CHAR_START, '\\', CHAR_ESCAPE),
+        transition(CHAR_CONTENT, '\'', CHAR)
+    ) + allButEscape.flatMap { x ->
+        listOf( transition(CHAR_START, x.toChar(), CHAR_CONTENT), transition(CHAR_ESCAPE, x.toChar(), CHAR_CONTENT) )
+    }
+}
+
 fun comments() : TransitionTable {
     val lineComment = ((1..127).toList() - listOf('\n'.toInt()))
         .map { x -> transition(LINE_COMMENT, x.toChar(), LINE_COMMENT) }
@@ -285,8 +307,9 @@ fun comments() : TransitionTable {
     val cComment = mapOf(
         transition(OP_DIVIDE, '*', C_COMMENT_CONTENT),
         transition(C_COMMENT_CONTENT, '*', C_COMMENT_EXIT_1),
-        transition(C_COMMENT_EXIT_1, '/', C_COMMENT)
-    ) + ((1..127).toList() - listOf('/'.toInt()))
+        transition(C_COMMENT_EXIT_1, '/', C_COMMENT),
+        transition(C_COMMENT_EXIT_1, '*', C_COMMENT_EXIT_1)
+    ) + ((1..127).toList() - listOf('/'.toInt(), '*'.toInt()))
         .map { x -> transition(C_COMMENT_EXIT_1, x.toChar(), C_COMMENT_CONTENT) }
         .toMap() + ((1..127).toList() - listOf('*'.toInt()))
         .map { x -> transition(C_COMMENT_CONTENT, x.toChar(), C_COMMENT_CONTENT) }
@@ -309,7 +332,8 @@ fun numberConstants() : TransitionTable {
         transition(INT_DIGIT, 'e', E_SEPARATOR),
         transition(INT_DIGIT, 'E', E_SEPARATOR),
         transition(E_SEPARATOR, '+', PLUS_MINUS_AFTER_E),
-        transition(E_SEPARATOR, '-', PLUS_MINUS_AFTER_E)
+        transition(E_SEPARATOR, '-', PLUS_MINUS_AFTER_E),
+        transition(INT_DIGIT, '.', DOT)
     ) + nz.map { d ->
         transition(START, d, INT_DIGIT)
     } + digits.flatMap { d -> listOf(
@@ -327,62 +351,7 @@ fun numberConstants() : TransitionTable {
     ) }
 }
 
-fun testStrings() {
-    val dfa = makeDFA(strings())
-    val lexer = Lexer(dfa, input("\"asdfasf\"\"asdas\""))
-    lexer.tokenize().forEach(::printState)
-}
-
-fun testKeywordsAndIdentifiers() {
-    val transitions = identifiersAndKeywords() + whitespaces()
-
-    val dfa = makeDFA(transitions)
-
-    val lexer = Lexer(dfa, input("if int else whiley"))
-
-    lexer.tokenize().forEach(::printState)
-}
-
-fun testKeywordsPlusIdentifiers() {
-    val transitions = identifiers() + keywords()
-
-    val k = TransitionKey(state(WORD_DOUBLE), Input('x'))
-    val out = transitions.getValue(k).value
-    println(States.values()[out])
-//    transitions.forEach { x -> println(x)}
-}
-
-fun testOperators () {
-    val dfa = makeDFA(operators())
-
-    val lexer = Lexer(dfa, input("*/%+-<<=>>===!=!=&&&|||"))
-    lexer.tokenize()
-}
-
-fun tokenize(input: InputStream): Sequence<Either<Position, Lexeme>> {
-    val lexDfa = makeDFA()
-    val lexer = Lexer(lexDfa, input)
-    return lexer.tokenize().filter(::shouldSkip)
-}
-
-fun shouldSkip(t: Either<Position, Lexeme>): Boolean {
-    when (t) {
-        is Either.Right<Lexeme> -> return toState(t.value.type) !in IGNORED_STATES
-    }
-    return true
-}
-
-fun toState(s: State): States {
-    return States.values()[s.value]
-}
-
 //https://rosettacode.org/wiki/Compiler/lexical_analyzer
-fun main() {
-//    testOperators()
-//    testKeywordsAndIdentifiers()
-//    testKeywordsPlusIdentifiers()
-    testStrings()
-}
 
 fun makeDFA(transitions: TransitionTable) : DFA {
     val finals = States.values()
@@ -393,10 +362,6 @@ fun makeDFA(transitions: TransitionTable) : DFA {
     return DFA(transitions, state(START), finals)
 }
 
-fun input(s: String) : InputStream {
-    return s.map { x -> Input(x) }.toList().listIterator()
-}
-
 fun state(s: States): State {
     return State(s.ordinal)
 }
@@ -405,19 +370,6 @@ fun transition(start: States, input: Char, end: States) : Pair<TransitionKey, St
     return Pair(TransitionKey(state(start), Input(input)), state(end))
 }
 
-fun printState(state: Either<Position, Lexeme>) {
-    when (state) {
-        is Either.Right<Lexeme> -> printLexeme(state.value)
-        is Either.Left<Position> -> printError(state.value)
-    }
-}
-
-fun printLexeme(l: Lexeme) {
-    println(States.values()[l.type.value].name() + ": "
-            + l.position.line + ", "
-            + l.position.col + ", value: "
-            + l.value )
-}
 
 fun printError(p: Position) {
     println("Eroare la pozitia l=" + p.line + ", c=" + p.col)
@@ -430,6 +382,7 @@ fun makeDFA() : DFA {
             whitespaces() +
             identifiersAndKeywords() +
             strings() +
+            chars() +
             comments() +
             numberConstants()
     return makeDFA(transitions)
@@ -440,7 +393,43 @@ val renaming = mapOf(
     HEX_DIGIT to "CONSTANT",
     INT_DIGIT to "CONSTANT",
     DIGIT_AFTER_POINT to "CONSTANT",
-    DIGIT_AFTER_E to "CONSTANT"
+    DIGIT_AFTER_E to "CONSTANT",
+    WORD_I to "IDENTIFIER",
+    WORD_IN to "IDENTIFIER",
+
+    WORD_R to "IDENTIFIER",
+    WORD_RE to "IDENTIFIER",
+    WORD_RET to "IDENTIFIER",
+    WORD_RETU to "IDENTIFIER",
+    WORD_RETUR to "IDENTIFIER",
+
+    WORD_C to "IDENTIFIER",
+    WORD_CH to "IDENTIFIER",
+    WORD_CHA to "IDENTIFIER",
+
+    WORD_D to "IDENTIFIER",
+    WORD_DO to "IDENTIFIER",
+    WORD_DOU to "IDENTIFIER",
+    WORD_DOUB to "IDENTIFIER",
+    WORD_DOUBL to "IDENTIFIER",
+
+    WORD_E to "IDENTIFIER",
+    WORD_EL to "IDENTIFIER",
+    WORD_ELS to "IDENTIFIER",
+
+    WORD_W to "IDENTIFIER",
+    WORD_WH to "IDENTIFIER",
+    WORD_WHI to "IDENTIFIER",
+    WORD_WHIL to "IDENTIFIER",
+
+    WORD_F to "IDENTIFIER",
+    WORD_FO to "IDENTIFIER",
+
+    WORD_FL to "IDENTIFIER",
+    WORD_FLO to "IDENTIFIER",
+    WORD_FLOA to "IDENTIFIER",
+
+    ZERO_FIRST to "CONSTANT"
 )
 
 fun States.name() : String {
