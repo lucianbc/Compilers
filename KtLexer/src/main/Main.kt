@@ -10,8 +10,8 @@ fun mappingFun(x: Char): Input {
 }
 
 fun main(args: Array<String>) {
-//    val input = readFile("./data/file1.txt")
-    val input = readFile(args[0])
+    val input = readFile("./data/file1.txt")
+//    val input = readFile(args[0])
     val tokenSequence = tokenize(input)
 
     loop@ for (t in tokenSequence) {

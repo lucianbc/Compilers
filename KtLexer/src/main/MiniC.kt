@@ -82,6 +82,10 @@ enum class States (val final: Boolean = true) {
 
     IDENTIFIER,
 
+
+    STRING_QUOTE(false),
+    STRING_ESCAPE(false),
+    STRING_ESCAPE_CARRIAGE(false),
     STRING_CONTENT(false),
     STRING,
 
@@ -243,15 +247,31 @@ fun identifiersAndKeywords() : TransitionTable {
 }
 
 fun strings() : TransitionTable {
-    val anyCharStar =  ((1..127).toList() - listOf('"'.toInt()))
+    val regularChars = ((1..127).toList() - listOf('"'.toInt(), '\n'.toInt(), '\\'.toInt()))
+    val allButCarriage = (1..127).toList() - listOf('\r'.toInt())
+
+    val fromQuoteToContent = regularChars
         .map { x -> x.toChar() }
-        .map { x -> transition(STRING_CONTENT, x, STRING_CONTENT)}
-        .toMap()
+        .map { x -> transition(STRING_QUOTE, x, STRING_CONTENT)}
+
+    val contentLoop = regularChars
+        .map { x -> x.toChar() }
+        .map { x -> transition(STRING_CONTENT, x, STRING_CONTENT) }
+
+    val fromEscapeToContent = allButCarriage
+        .map { x -> x.toChar() }
+        .map { x -> transition(STRING_ESCAPE, x, STRING_CONTENT) }
 
     return mapOf(
-        transition(START, '"', STRING_CONTENT),
+        transition(START, '"', STRING_QUOTE),
+        transition(STRING_QUOTE, '"', STRING),
         transition(STRING_CONTENT, '"', STRING)
-    ) + anyCharStar
+    ) + fromQuoteToContent + contentLoop + mapOf(
+        transition(STRING_CONTENT, '\\', STRING_ESCAPE),
+        transition(STRING_QUOTE, '\\', STRING_ESCAPE),
+        transition(STRING_ESCAPE, '\r', STRING_ESCAPE_CARRIAGE),
+        transition(STRING_ESCAPE_CARRIAGE, '\n', STRING_CONTENT)
+    ) + allButCarriage.
 }
 
 fun comments() : TransitionTable {
