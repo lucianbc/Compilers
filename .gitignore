@@ -308,3 +308,9 @@ hs_err_pid*
 
 .idea
 *.iml
+.gradle
+gradle
+gradlew
+gradlew.bat
+
+build/

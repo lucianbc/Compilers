@@ -15,7 +15,25 @@ dependencies {
 
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
+    kotlinOptions {
+        freeCompilerArgs = ["-XXLanguage:+InlineClasses"]
+    }
 }
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+sourceSets {
+    main.java.srcDirs += 'src/main/'
+}
+
+dependencies {
+    compile("org.jetbrains.kotlin:kotlin-stdlib:1.3.21")
+}
+jar {
+    manifest {
+        attributes 'Main-Class': 'MainKt'
+    }
+
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }

@@ -9,8 +9,9 @@ fun mappingFun(x: Char): Input {
     return Input(x)
 }
 
-fun main() {
-    val input = readFile("./data/file1.txt")
+fun main(args: Array<String>) {
+//    val input = readFile("./data/file1.txt")
+    val input = readFile(args[0])
     val tokenSequence = tokenize(input)
 
     loop@ for (t in tokenSequence) {
