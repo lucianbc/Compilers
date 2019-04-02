@@ -271,7 +271,7 @@ fun strings() : TransitionTable {
         transition(STRING_QUOTE, '\\', STRING_ESCAPE),
         transition(STRING_ESCAPE, '\r', STRING_ESCAPE_CARRIAGE),
         transition(STRING_ESCAPE_CARRIAGE, '\n', STRING_CONTENT)
-    ) + allButCarriage.
+    ) + fromEscapeToContent
 }
 
 fun comments() : TransitionTable {
